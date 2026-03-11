@@ -4,16 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR الرسم الاحترافي - دقة عالية</title>
+    <title>AR الرسم الاحترافي - جودة 1080p</title>
     <style>
-        /* ========== المتغيرات والأساسيات ========== */
+        /* ========== المتغيرات الأساسية ========== */
+        :root {
+            --primary: #00e676;
+            --primary-dark: #00c853;
+            --bg-dark: #121212;
+            --bg-glass: rgba(30, 30, 30, 0.75);
+            --border-glass: rgba(255, 255, 255, 0.15);
+            --text-light: #f5f5f5;
+            --danger: #ff5252;
+            --success: #00e676;
+            --shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            --radius: 18px;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            font-family: 'Segoe UI', Tahoma, system-ui, sans-serif;
+            font-family: 'Segoe UI', 'Tahoma', system-ui, sans-serif;
         }
 
         body {
@@ -21,14 +34,14 @@
             overflow: hidden;
             width: 100vw;
             height: 100vh;
-            color: #f0f0f0;
+            color: var(--text-light);
         }
 
-        /* شاشة الإذن */
+        /* ========== شاشة طلب الإذن ========== */
         #permission-overlay {
             position: fixed;
             inset: 0;
-            background: #121212;
+            background: var(--bg-dark);
             z-index: 100;
             display: flex;
             flex-direction: column;
@@ -39,7 +52,7 @@
         }
 
         #permission-overlay h2 {
-            color: #00e676;
+            color: var(--primary);
             font-size: 28px;
             margin-bottom: 16px;
             font-weight: 500;
@@ -54,7 +67,7 @@
         }
 
         #start-camera-btn {
-            background: #00e676;
+            background: var(--primary);
             color: #000;
             font-size: 18px;
             font-weight: 600;
@@ -71,7 +84,7 @@
             box-shadow: 0 0 15px rgba(0, 230, 118, 0.6);
         }
 
-        /* عناصر الرسم */
+        /* ========== عناصر الرسم الأساسية ========== */
         #camera-feed {
             position: absolute;
             top: 0;
@@ -80,7 +93,7 @@
             height: 100%;
             object-fit: cover;
             z-index: 1;
-            pointer-events: none;
+            pointer-events: none; /* الكاميرا خلفية فقط */
         }
 
         #image-container {
@@ -96,12 +109,14 @@
             padding: 4px;
             background: rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(2px);
+            transition: border 0.2s;
             cursor: grab;
         }
 
         #image-container.locked {
             border: none;
             pointer-events: none;
+            cursor: default;
             background: transparent;
             backdrop-filter: none;
         }
@@ -115,7 +130,6 @@
             border-radius: 8px;
         }
 
-        /* Canvas الرسم - دقة عالية */
         #drawing-canvas {
             position: absolute;
             top: 0;
@@ -124,10 +138,9 @@
             height: 100%;
             z-index: 3;
             touch-action: none;
-            /* عرض CSS فقط، الأبعاد الفعلية ستكون كبيرة */
         }
 
-        /* لوحة التحكم */
+        /* ========== لوحة التحكم الرئيسية ========== */
         #ui-panel {
             position: absolute;
             bottom: 20px;
@@ -135,13 +148,13 @@
             transform: translateX(-50%);
             width: calc(100% - 32px);
             max-width: 520px;
-            background: rgba(30, 30, 30, 0.75);
+            background: var(--bg-glass);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 18px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
             padding: 18px 16px;
             z-index: 10;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            box-shadow: var(--shadow);
             transition: bottom 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s;
         }
 
@@ -157,9 +170,9 @@
             right: 20px;
             width: 52px;
             height: 52px;
-            background: rgba(30, 30, 30, 0.75);
+            background: var(--bg-glass);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--border-glass);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -167,15 +180,17 @@
             font-size: 26px;
             cursor: pointer;
             z-index: 11;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
-            transition: transform 0.2s;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, background 0.2s;
             color: white;
         }
 
         #toggle-ui:active {
             transform: scale(0.9);
+            background: rgba(80, 80, 80, 0.8);
         }
 
+        /* صفوف الأزرار */
         .row {
             display: flex;
             flex-wrap: wrap;
@@ -188,6 +203,7 @@
             margin-bottom: 0;
         }
 
+        /* الأزرار الأساسية */
         .btn {
             flex: 1 1 0;
             min-width: 70px;
@@ -204,12 +220,13 @@
             justify-content: center;
             gap: 4px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: background 0.2s, transform 0.1s, border-color 0.2s;
+            line-height: 1.3;
             backdrop-filter: blur(5px);
         }
 
         .btn span:first-child {
-            font-size: 18px;
+            font-size: 18px; /* رمز بسيط */
         }
 
         .btn:active {
@@ -218,22 +235,23 @@
         }
 
         .btn.active-toggle {
-            background: #00e676;
-            border-color: #00e676;
+            background: var(--primary);
+            border-color: var(--primary);
             color: #000;
             font-weight: 600;
         }
 
         .btn.danger {
-            color: #ff5252;
+            color: var(--danger);
         }
 
         .btn.primary-bg {
-            background: #00e676;
+            background: var(--primary);
             color: #000;
-            border-color: #00e676;
+            border-color: var(--primary);
         }
 
+        /* عناصر التحكم المنزلقة */
         .slider-group {
             display: flex;
             align-items: center;
@@ -264,10 +282,10 @@
             -webkit-appearance: none;
             width: 20px;
             height: 20px;
-            background: #00e676;
+            background: var(--primary);
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 0 10px #00e676;
+            box-shadow: 0 0 10px var(--primary);
             border: 2px solid white;
         }
 
@@ -297,10 +315,11 @@
             color: #ddd;
         }
 
+        /* مؤشر التسجيل */
         .recording-indicator {
-            background: #ff5252 !important;
+            background: var(--danger) !important;
             color: white !important;
-            border-color: #ff5252 !important;
+            border-color: var(--danger) !important;
             animation: pulse 1.3s infinite;
         }
 
@@ -310,10 +329,12 @@
             100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
         }
 
+        /* مخفي لعنصر رفع الملف */
         #image-upload {
             display: none;
         }
 
+        /* رسالة خطأ */
         .error-toast {
             position: fixed;
             bottom: 100px;
@@ -342,52 +363,66 @@
     <!-- شاشة الإذن -->
     <div id="permission-overlay">
         <h2>AR الرسم الاحترافي</h2>
-        <p>لبدء تجربة الرسم بالتتبع المباشر بدقة عالية، الرجاء السماح بالوصول إلى الكاميرا الخلفية.</p>
+        <p>لبدء تجربة الرسم بالتتبع المباشر بدقة عالية (1080p)، الرجاء السماح بالوصول إلى الكاميرا الخلفية.</p>
         <button id="start-camera-btn">▶ تشغيل الكاميرا</button>
     </div>
 
+    <!-- عناصر الرسم -->
     <video id="camera-feed" autoplay playsinline muted></video>
     <div id="image-container">
         <img id="trace-image" alt="صورة التتبع">
     </div>
     <canvas id="drawing-canvas"></canvas>
 
+    <!-- زر إظهار/إخفاء اللوحة -->
     <div id="toggle-ui">⚙️</div>
 
+    <!-- لوحة التحكم -->
     <div id="ui-panel" class="hidden">
+        <!-- الصف الأول: رفع، قفل، تراجع -->
         <div class="row">
             <label for="image-upload" class="btn">
-                <span>📁</span><span>رفع</span>
+                <span>📁</span>
+                <span>رفع</span>
             </label>
             <input type="file" id="image-upload" accept="image/*">
             <div class="btn" id="lock-btn">
-                <span>🔓</span><span>قفل</span>
+                <span>🔓</span>
+                <span>قفل</span>
             </div>
             <div class="btn" id="undo-btn">
-                <span>↩️</span><span>تراجع</span>
+                <span>↩️</span>
+                <span>تراجع</span>
             </div>
         </div>
+        <!-- الصف الثاني: مسح، حفظ، تسجيل -->
         <div class="row">
             <div class="btn danger" id="clear-btn">
-                <span>🗑️</span><span>مسح</span>
+                <span>🗑️</span>
+                <span>مسح</span>
             </div>
             <div class="btn primary-bg" id="save-btn">
-                <span>🖼️</span><span>حفظ</span>
+                <span>🖼️</span>
+                <span>حفظ</span>
             </div>
             <div class="btn" id="record-btn">
-                <span>⏺️</span><span>تسجيل</span>
+                <span>⏺️</span>
+                <span>تسجيل</span>
             </div>
         </div>
+        <!-- شريط الشفافية -->
         <div class="slider-group">
             <label>الشفافية</label>
             <input type="range" id="opacity-slider" min="0.1" max="1" step="0.05" value="0.5">
             <span id="opacity-value">0.5</span>
         </div>
+        <!-- شريط التكبير -->
         <div class="slider-group">
             <label>التكبير</label>
             <input type="range" id="scale-slider" min="0.3" max="3" step="0.1" value="1">
             <span id="scale-value">1.0</span>
         </div>
+        <!-- لون الفرشاة والحجم -->
         <div class="slider-group">
             <input type="color" id="color-picker" value="#00e676">
             <label>الحجم</label>
@@ -400,7 +435,7 @@
         (function() {
             'use strict';
 
-            // ----- عناصر الصفحة -----
+            // ----- المتغيرات العامة -----
             const overlay = document.getElementById('permission-overlay');
             const startBtn = document.getElementById('start-camera-btn');
             const video = document.getElementById('camera-feed');
@@ -421,7 +456,7 @@
             const colorPicker = document.getElementById('color-picker');
             const brushSize = document.getElementById('brush-size');
 
-            // عداد القيم
+            // عداد للقيم
             document.getElementById('opacity-value').innerText = opacitySlider.value;
             document.getElementById('scale-value').innerText = scaleSlider.value;
             document.getElementById('brush-value').innerText = brushSize.value;
@@ -429,7 +464,7 @@
             // متغيرات الرسم
             let isDrawing = false;
             let lastX = 0, lastY = 0;
-            let paths = [];          // جميع المسارات
+            let paths = [];          // مصفوفة المسارات الكاملة
             let currentPath = [];     // المسار الحالي
 
             // متغيرات الصورة
@@ -439,69 +474,77 @@
             let isDraggingImage = false;
             let dragStartX = 0, dragStartY = 0;
 
-            // تسجيل الفيديو
+            // متغيرات تسجيل الفيديو
             let mediaRecorder = null;
             let recordedChunks = [];
             let isRecording = false;
             let recordAnimationId = null;
+            const recordCanvas = document.createElement('canvas');
+            const recordCtx = recordCanvas.getContext('2d');
 
             // حالة واجهة المستخدم
-            let uiVisible = false;
+            let uiVisible = false; // تبدأ مخفية بعد تشغيل الكاميرا
 
-            // دقة عالية للرسم
-            const TARGET_WIDTH = 1920;  // عرض ثابت عالي الدقة
-            let targetHeight = 1080;     // سيتم حسابه بناءً على نسبة الشاشة
+            // دقة عالية ثابتة (Full HD)
+            const CANVAS_WIDTH = 1920;
+            const CANVAS_HEIGHT = 1080; // نسبة 16:9
 
-            // نسب التحويل من إحداثيات الشاشة إلى إحداثيات canvas الحقيقية
-            let scaleX = 1, scaleY = 1;
-
-            // ----- دالة تحديث دقة canvas مع الحفاظ على نسبة الشاشة -----
-            function updateCanvasResolution() {
-                // نحسب الارتفاع المناسب بناءً على عرض الشاشة الفعلي (viewport)
-                const screenWidth = window.innerWidth;
-                const screenHeight = window.innerHeight;
-                const screenAspect = screenWidth / screenHeight;
-
-                // نحافظ على عرض ثابت TARGET_WIDTH، ونحسب الارتفاع ليطابق نسبة الشاشة
-                targetHeight = Math.round(TARGET_WIDTH / screenAspect);
-
-                // تعيين الأبعاد الفعلية للكانفاس
-                canvas.width = TARGET_WIDTH;
-                canvas.height = targetHeight;
-
-                // تحديث نسب التحويل من إحداثيات الشاشة (CSS) إلى إحداثيات البكسل الحقيقية
-                const cssWidth = canvas.clientWidth;   // عرض الكانفاس في CSS (يملأ الشاشة)
-                const cssHeight = canvas.clientHeight;
-                scaleX = canvas.width / cssWidth;
-                scaleY = canvas.height / cssHeight;
-
-                // إعادة رسم المسارات بعد تغيير الدقة
+            // ----- دالة لضبط دقة الرسم -----
+            function setupHighResolution() {
+                canvas.width = CANVAS_WIDTH;
+                canvas.height = CANVAS_HEIGHT;
+                recordCanvas.width = CANVAS_WIDTH;
+                recordCanvas.height = CANVAS_HEIGHT;
                 redrawPaths();
             }
 
-            // ----- تحويل إحداثيات حدث (mouse/touch) إلى إحداثيات canvas الحقيقية -----
-            function getTransformedCoords(e) {
+            // ----- دالة لتحويل إحداثيات الحدث إلى إحداثيات canvas الحقيقية -----
+            function getCanvasCoords(e) {
+                const rect = canvas.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-                // الحصول على موضع الكانفاس بالنسبة للمنفذ (viewport)
-                const rect = canvas.getBoundingClientRect();
-                // إحداثيات نسبية داخل الكانفاس من 0 إلى 1
-                const relX = (clientX - rect.left) / rect.width;
-                const relY = (clientY - rect.top) / rect.height;
-
-                // التحويل إلى إحداثيات canvas الحقيقية
-                const canvasX = relX * canvas.width;
-                const canvasY = relY * canvas.height;
-
-                // التأكد من أن الإحداثيات ضمن الحدود
-                return [
-                    Math.min(canvas.width, Math.max(0, canvasX)),
-                    Math.min(canvas.height, Math.max(0, canvasY))
-                ];
+                // حساب نسبة التحويل من عرض CSS إلى البكسل الفعلي
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let canvasX = (clientX - rect.left) * scaleX;
+                let canvasY = (clientY - rect.top) * scaleY;
+                // التأكد من أن الإحداثيات ضمن حدود canvas
+                canvasX = Math.min(canvas.width, Math.max(0, canvasX));
+                canvasY = Math.min(canvas.height, Math.max(0, canvasY));
+                return [canvasX, canvasY];
             }
 
-            // ----- إعادة رسم المسارات -----
+            // ----- دالة لعرض رسالة خطأ مؤقتة -----
+            function showError(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'error-toast';
+                toast.innerText = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+
+            // ----- تشغيل الكاميرا -----
+            startBtn.addEventListener('click', async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: { ideal: 'environment' },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        } 
+                    });
+                    video.srcObject = stream;
+                    overlay.style.display = 'none';
+                    uiPanel.classList.remove('hidden');
+                    toggleBtn.style.display = 'flex';
+                    uiVisible = true;
+                    setupHighResolution(); // ضبط الدقة العالية
+                } catch (err) {
+                    alert('تعذر الوصول إلى الكاميرا. تحقق من الصلاحيات.');
+                }
+            });
+
+            // ----- إعادة رسم جميع المسارات -----
             function redrawPaths() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 paths.forEach(path => {
@@ -519,11 +562,11 @@
                 });
             }
 
-            // ----- أحداث الرسم -----
+            // ----- أحداث الرسم (تعمل باللمس والماوس) -----
             function startDrawing(e) {
                 e.preventDefault();
                 isDrawing = true;
-                const [x, y] = getTransformedCoords(e);
+                const [x, y] = getCanvasCoords(e);
                 lastX = x;
                 lastY = y;
                 currentPath = [{
@@ -536,7 +579,7 @@
             function draw(e) {
                 if (!isDrawing) return;
                 e.preventDefault();
-                const [x, y] = getTransformedCoords(e);
+                const [x, y] = getCanvasCoords(e);
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
@@ -583,6 +626,7 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             });
 
+            // حفظ الصورة (الرسم فقط)
             saveBtn.addEventListener('click', () => {
                 const link = document.createElement('a');
                 link.download = `ar-drawing-${Date.now()}.png`;
@@ -598,6 +642,7 @@
                 reader.onload = (ev) => {
                     traceImage.src = ev.target.result;
                     imageContainer.style.display = 'block';
+                    // إعادة تعيين الموضع والحجم
                     currentScale = 1;
                     translateX = 0;
                     translateY = 0;
@@ -608,12 +653,13 @@
                 reader.readAsDataURL(file);
             });
 
+            // تحديث موقع الصورة
             function updateImageTransform() {
                 imageContainer.style.transform = 
                     `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${currentScale})`;
             }
 
-            // سحب الصورة
+            // سحب الصورة (باستخدام pointer events للتبسيط)
             function onDragStart(e) {
                 if (isImageLocked) return;
                 e.preventDefault();
@@ -640,6 +686,7 @@
                 imageContainer.style.cursor = 'grab';
             }
 
+            // ربط أحداث السحب
             imageContainer.addEventListener('touchstart', onDragStart, { passive: false });
             imageContainer.addEventListener('touchmove', onDragMove, { passive: false });
             imageContainer.addEventListener('touchend', onDragEnd);
@@ -674,22 +721,28 @@
                 updateImageTransform();
             });
 
+            // تحديث حجم الفرشاة
             brushSize.addEventListener('input', (e) => {
                 document.getElementById('brush-value').innerText = e.target.value;
             });
 
-            // ----- تسجيل الفيديو بدقة عالية (استخدام canvas نفسه) -----
+            // ----- تسجيل الفيديو بدقة 1080p -----
             recordBtn.addEventListener('click', () => {
                 if (!isRecording) {
+                    // بدء التسجيل
                     if (!video.srcObject) {
                         showError('الكاميرا غير متوفرة');
                         return;
                     }
 
-                    // canvas بدقة عالية بالفعل
+                    // التأكد من أن recordCanvas بنفس دقة canvas
+                    recordCanvas.width = canvas.width;
+                    recordCanvas.height = canvas.height;
+
+                    // محاولة إنشاء MediaRecorder
                     let stream;
                     try {
-                        stream = canvas.captureStream(30);
+                        stream = recordCanvas.captureStream(30);
                     } catch (err) {
                         showError('المتصفح لا يدعم تسجيل الفيديو');
                         return;
@@ -713,83 +766,27 @@
                         recordedChunks = [];
                     };
 
+                    // بدء التسجيل
                     mediaRecorder.start();
                     isRecording = true;
                     recordBtn.classList.add('recording-indicator');
                     recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
 
-                    // إخفاء اللوحة
+                    // إخفاء اللوحة تلقائياً
                     uiPanel.classList.add('hidden');
                     toggleBtn.innerText = '⬆';
                     uiVisible = false;
 
-                    // دالة تسجيل الإطارات
+                    // حلقة التسجيل
                     function drawFrame() {
                         if (!isRecording) return;
 
-                        // نحتاج فقط لضمان رسم الكاميرا في الخلفية قبل canvas (canvas بالفعل يحتوي على الرسم)
-                        // لكن canvas يحتوي فقط على الرسم، والكاميرا غير مرسومة عليه. لذا يجب رسم الكاميرا تحت الرسم.
-                        // سنقوم بدمج الكاميرا والرسم في هذا الإطار باستخدام context آخر؟
-                        // الحل: نستخدم canvas كطبقة عليا، لكن الكاميرا لا تظهر في canvas. لذا الفيديو المسجل سيفتقد الكاميرا.
-                        // يجب أن نرسم الكاميرا تحت الرسم في نفس canvas قبل كل إطار.
-                        // لكن canvas حاليًا يمثل الرسم فقط. لذلك سنقوم في كل إطار برسم الكاميرا أولاً ثم الرسم فوقها.
-                        
-                        // رسم الكاميرا في الخلفية
+                        // رسم الكاميرا في recordCanvas
                         const vw = video.videoWidth;
                         const vh = video.videoHeight;
+                        const cw = recordCanvas.width;
+                        const ch = recordCanvas.height;
                         if (vw && vh) {
-                            const cw = canvas.width;
-                            const ch = canvas.height;
-                            const vRatio = vw / vh;
-                            const cRatio = cw / ch;
-                            let drawW, drawH, offsetX, offsetY;
-
-                            if (vRatio > cRatio) {
-                                drawH = ch;
-                                drawW = drawH * vRatio;
-                                offsetX = (cw - drawW) / 2;
-                                offsetY = 0;
-                            } else {
-                                drawW = cw;
-                                drawH = drawW / vRatio;
-                                offsetX = 0;
-                                offsetY = (ch - drawH) / 2;
-                            }
-
-                            // نسخة احتياطية من الرسم الحالي
-                            // نقوم بمسح canvas مؤقتًا، ثم رسم الكاميرا، ثم إعادة رسم المسارات
-                            // هذا سيؤدي إلى وميض لكنه داخل حلقة التسجيل ولن يظهر للمستخدم.
-                            // لحل الوميض، يمكننا استخدام canvas آخر للتسجيل فقط.
-                            // ولكن لتبسيط، سنستخدم canvas آخر للتسجيل (recordCanvas) ونرسم عليه كل شيء.
-                            // دعنا ننشئ recordCanvas داخليًا ونرسم عليه كلاً من الكاميرا والمسارات.
-                            // بهذه الطريقة لا نؤثر على canvas المعروض.
-                            
-                            // لكننا أزلنا recordCanvas سابقًا، لذا سنعيد إنشاءه محليًا داخل الدالة.
-                            // لكن لتجنب إعادة إنشاء في كل إطار، ننشئه مرة واحدة خارجياً.
-                        }
-                    }
-
-                    // لكن الطريقة الأفضل: استخدام recordCanvas منفصل ونرسم عليه كل شيء.
-                    // سأقوم بإنشاء recordCanvas خارج الشرط واستخدامه.
-                    // بما أننا نريد استخدام canvas الحالي للتسجيل ولكن بدون فقدان الكاميرا، الحل العملي:
-                    // في كل إطار نقوم بنسخ محتوى canvas (الرسم) إلى recordCanvas ثم نرسم الكاميرا تحت.
-                    // هذا يحافظ على canvas الأصلي دون مسح.
-                    
-                    // لننشئ recordCanvas بنفس دقة canvas
-                    const recordCanvas = document.createElement('canvas');
-                    recordCanvas.width = canvas.width;
-                    recordCanvas.height = canvas.height;
-                    const recordCtx = recordCanvas.getContext('2d');
-
-                    function highResRecordingFrame() {
-                        if (!isRecording) return;
-
-                        // رسم الكاميرا أولاً
-                        const vw = video.videoWidth;
-                        const vh = video.videoHeight;
-                        if (vw && vh) {
-                            const cw = recordCanvas.width;
-                            const ch = recordCanvas.height;
                             const vRatio = vw / vh;
                             const cRatio = cw / ch;
                             let drawW, drawH, offsetX, offsetY;
@@ -808,149 +805,25 @@
                             recordCtx.drawImage(video, offsetX, offsetY, drawW, drawH);
                         }
 
-                        // ثم رسم محتوى canvas الأصلي (الرسم) فوقها
+                        // رسم الخطوط (من canvas الأصلي) - بدون الصورة الشفافة
                         recordCtx.drawImage(canvas, 0, 0);
 
-                        // لا نحتاج لاستدعاء captureStream مرة أخرى، لأننا نستخدم recordCanvas كوجهة للتسجيل.
-                        // لكن mediaRecorder أنشئ من stream خاص بـ canvas الأصلي. هذا لا يعمل.
-                        // يجب أن ننشئ MediaRecorder من recordCanvas.
-                        // لذلك سنعيد هيكلة: عند بدء التسجيل، ننشئ recordCanvas ونبدأ التسجيل منه.
-                        
-                        // هذا يتطلب إعادة تنظيم. سأقوم بإعادة هيكلة قسم التسجيل بشكل كامل خارج هذا النطاق.
-                        // لكن نظرًا لضيق الوقت، سأطبق الحل بإنشاء MediaRecorder من recordCanvas مباشرة.
+                        recordAnimationId = requestAnimationFrame(drawFrame);
                     }
 
-                    // الحل المبسط: استخدام recordCanvas من البداية
-                    // لننشئ recordCanvas ونبدأ التسجيل منه.
-                    const recordCanvas = document.createElement('canvas');
-                    recordCanvas.width = canvas.width;
-                    recordCanvas.height = canvas.height;
-                    const recordCtx = recordCanvas.getContext('2d');
-
-                    let recordStream;
-                    try {
-                        recordStream = recordCanvas.captureStream(30);
-                    } catch (err) {
-                        showError('لا يمكن إنشاء تيار التسجيل');
-                        return;
-                    }
-
-                    const recorder = new MediaRecorder(recordStream, { mimeType: 'video/webm' });
-                    recordedChunks = [];
-                    recorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) recordedChunks.push(e.data);
-                    };
-                    recorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.download = `ar-recording-${Date.now()}.webm`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        recordedChunks = [];
-                    };
-
-                    recorder.start();
-                    isRecording = true;
-                    recordBtn.classList.add('recording-indicator');
-                    recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
-                    uiPanel.classList.add('hidden');
-                    toggleBtn.innerText = '⬆';
-                    uiVisible = false;
-
-                    function recordFrame() {
-                        if (!isRecording) return;
-
-                        // رسم الكاميرا
-                        const vw = video.videoWidth;
-                        const vh = video.videoHeight;
-                        if (vw && vh) {
-                            const cw = recordCanvas.width;
-                            const ch = recordCanvas.height;
-                            const vRatio = vw / vh;
-                            const cRatio = cw / ch;
-                            let drawW, drawH, offsetX, offsetY;
-
-                            if (vRatio > cRatio) {
-                                drawH = ch;
-                                drawW = drawH * vRatio;
-                                offsetX = (cw - drawW) / 2;
-                                offsetY = 0;
-                            } else {
-                                drawW = cw;
-                                drawH = drawW / vRatio;
-                                offsetX = 0;
-                                offsetY = (ch - drawH) / 2;
-                            }
-                            recordCtx.drawImage(video, offsetX, offsetY, drawW, drawH);
-                        }
-
-                        // رسم الرسم (من canvas الأصلي)
-                        recordCtx.drawImage(canvas, 0, 0);
-
-                        requestAnimationFrame(recordFrame);
-                    }
-
-                    recordFrame();
-                    // تخزين المتغيرات للإيقاف
-                    window.currentRecorder = recorder;
-                    window.recordFrameId = recordFrame;
+                    drawFrame();
 
                 } else {
                     // إيقاف التسجيل
                     isRecording = false;
-                    if (window.currentRecorder) {
-                        window.currentRecorder.stop();
-                    }
-                    cancelAnimationFrame(window.recordFrameId);
+                    mediaRecorder.stop();
+                    cancelAnimationFrame(recordAnimationId);
                     recordBtn.classList.remove('recording-indicator');
                     recordBtn.innerHTML = '<span>⏺️</span><span>تسجيل</span>';
                 }
             });
 
-            function showError(msg) {
-                const toast = document.createElement('div');
-                toast.className = 'error-toast';
-                toast.innerText = msg;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
-            }
-
-            // ----- تشغيل الكاميرا -----
-            startBtn.addEventListener('click', async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: { ideal: 'environment' } } 
-                    });
-                    video.srcObject = stream;
-                    overlay.style.display = 'none';
-                    uiPanel.classList.remove('hidden');
-                    toggleBtn.style.display = 'flex';
-                    uiVisible = true;
-
-                    // ضبط دقة الرسم بعد ظهور الكاميرا
-                    updateCanvasResolution();
-                } catch (err) {
-                    alert('تعذر الوصول إلى الكاميرا. تحقق من الصلاحيات.');
-                }
-            });
-
-            window.addEventListener('resize', () => {
-                updateCanvasResolution();
-            });
-
-            // تحديث القيم المعروضة
-            opacitySlider.addEventListener('input', (e) => {
-                document.getElementById('opacity-value').innerText = e.target.value;
-            });
-            scaleSlider.addEventListener('input', (e) => {
-                document.getElementById('scale-value').innerText = parseFloat(e.target.value).toFixed(1);
-            });
-            brushSize.addEventListener('input', (e) => {
-                document.getElementById('brush-value').innerText = e.target.value;
-            });
-
-            // زر إظهار/إخفاء اللوحة
+            // ----- إظهار/إخفاء اللوحة -----
             toggleBtn.addEventListener('click', () => {
                 uiVisible = !uiVisible;
                 if (uiVisible) {
@@ -961,6 +834,14 @@
                     toggleBtn.innerText = '⬆';
                 }
             });
+
+            // تحديث recordCanvas عند تغير حجم النافذة (نادراً)
+            window.addEventListener('resize', () => {
+                // لا نغير دقة canvas، فقط نتركها ثابتة
+            });
+
+            // أيقونة السحب الافتراضية
+            imageContainer.style.cursor = 'grab';
         })();
     </script>
 </body>
