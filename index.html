@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Pro - تسجيل مجزأ 25 ثانية</title>
+    <title>AR Pro - تسجيل سلس 30fps</title>
     <style>
-        /* جميع الأنماط السابقة كما هي، مع إضافة تحسينات بسيطة */
+        /* جميع الأنماط كما هي مع إضافة زر المسح */
         :root {
             --primary: #00e676;
             --danger: #ff5252;
@@ -328,7 +328,7 @@
     <!-- شاشة الإذن -->
     <div id="permission-overlay">
         <h2>AR الرسم الاحترافي</h2>
-        <p>ابدأ الرسم بالتتبع المباشر بدقة تصل إلى 4K، مع تسجيل تلقائي كل 25 ثانية للحفاظ على الأداء.</p>
+        <p>ابدأ الرسم بالتتبع المباشر بدقة تصل إلى 4K، مع تسجيل سلس 30 إطار/ثانية.</p>
         <button id="start-camera-btn">▶ تشغيل الكاميرا</button>
     </div>
 
@@ -352,9 +352,11 @@
             <input type="file" id="image-upload" accept="image/*">
             <div class="btn" id="lock-btn"><span>🔓</span><span>قفل</span></div>
             <div class="btn" id="undo-btn"><span>↩️</span><span>تراجع</span></div>
+            <!-- زر مسح البيانات الجديد -->
+            <div class="btn danger" id="reset-data-btn"><span>🧹</span><span>مسح البيانات</span></div>
         </div>
         <div class="row">
-            <div class="btn danger" id="clear-btn"><span>🗑️</span><span>مسح</span></div>
+            <div class="btn danger" id="clear-btn"><span>🗑️</span><span>مسح الرسم</span></div>
             <div class="btn primary-bg" id="save-btn"><span>🖼️</span><span>صورة</span></div>
             <div class="btn" id="record-btn"><span>⏺️</span><span>تسجيل</span></div>
         </div>
@@ -398,6 +400,7 @@
             const lockBtn = document.getElementById('lock-btn');
             const undoBtn = document.getElementById('undo-btn');
             const clearBtn = document.getElementById('clear-btn');
+            const resetDataBtn = document.getElementById('reset-data-btn');
             const saveBtn = document.getElementById('save-btn');
             const recordBtn = document.getElementById('record-btn');
             const colorPicker = document.getElementById('color-picker');
@@ -420,17 +423,15 @@
             let currentRatio = '16:9';
             let canvasWidth = 1920, canvasHeight = 1080;
 
-            // التسجيل المجزأ
+            // التسجيل
             let mediaRecorder = null;
             let recordedChunks = [];
             let isRecording = false;
-            let recordAnimationId = null;
+            let recordInterval = null;       // نستخدم setInterval بدلاً من requestAnimationFrame
             const recordCanvas = document.createElement('canvas');
             const recordCtx = recordCanvas.getContext('2d');
             let recordingStartTime = 0;
             let timerInterval = null;
-            let chunkInterval = null;          // مؤقت لتقسيم المقاطع
-            const CHUNK_DURATION = 25000;       // 25 ثانية بالملي ثانية
 
             // UI
             let uiVisible = false;
@@ -439,6 +440,76 @@
             document.getElementById('opacity-value').innerText = opacitySlider.value;
             document.getElementById('scale-value').innerText = scaleSlider.value;
             document.getElementById('brush-value').innerText = brushSize.value;
+
+            // --- دالة مسح جميع البيانات (إعادة تعيين كاملة) ---
+            function resetAllData() {
+                // مسح المسارات
+                paths = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // إعادة تعيين الصورة المرجعية
+                traceImage.src = '';
+                imageContainer.style.display = 'none';
+                currentScale = 1;
+                translateX = 0;
+                translateY = 0;
+                scaleSlider.value = '1';
+                document.getElementById('scale-value').innerText = '1.0';
+                updateImageTransform();
+
+                // إعادة تعيين لون الفرشاة والحجم إلى الافتراضي
+                colorPicker.value = '#00e676';
+                brushSize.value = '3';
+                document.getElementById('brush-value').innerText = '3';
+
+                // إعادة تعيين الشفافية
+                opacitySlider.value = '0.5';
+                traceImage.style.opacity = '0.5';
+                document.getElementById('opacity-value').innerText = '0.5';
+
+                // إعادة تعيين القفل
+                if (isImageLocked) {
+                    isImageLocked = false;
+                    imageContainer.classList.remove('locked');
+                    lockBtn.classList.remove('active-toggle');
+                    lockBtn.innerHTML = '<span>🔓</span><span>قفل</span>';
+                }
+
+                // إلغاء أي تسجيل قيد التشغيل
+                if (isRecording) {
+                    stopRecording();
+                }
+
+                // عرض رسالة تأكيد
+                showToast('تم مسح جميع البيانات');
+            }
+
+            function showToast(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'error-toast';
+                toast.style.background = '#00e676';
+                toast.style.color = '#000';
+                toast.innerText = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }
+
+            // --- دالة إيقاف التسجيل (للاستخدام الداخلي) ---
+            function stopRecording() {
+                if (!isRecording) return;
+                isRecording = false;
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                if (recordInterval) {
+                    clearInterval(recordInterval);
+                    recordInterval = null;
+                }
+                clearInterval(timerInterval);
+                timerDiv.style.display = 'none';
+                recordBtn.classList.remove('recording-indicator');
+                recordBtn.innerHTML = '<span>⏺️</span><span>تسجيل</span>';
+            }
 
             function updateDimensions() {
                 if (currentRes === '1080') {
@@ -539,6 +610,9 @@
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
+
+            // --- زر مسح البيانات ---
+            resetDataBtn.addEventListener('click', resetAllData);
 
             // --- رفع الصورة ---
             imageUpload.addEventListener('change', (e) => {
@@ -667,7 +741,7 @@
                 }
             });
 
-            // --- تسجيل الفيديو مع التقسيم التلقائي كل 25 ثانية ---
+            // --- تسجيل الفيديو باستخدام setInterval لتحقيق 30 إطار/ثانية ثابتة ---
             function showError(msg) {
                 const toast = document.createElement('div');
                 toast.className = 'error-toast';
@@ -676,85 +750,49 @@
                 setTimeout(() => toast.remove(), 3000);
             }
 
-            // دالة لبدء مقطع تسجيل جديد
-            function startNewChunk() {
-                if (!isRecording) return; // توقف عام
-
-                // إيقاف المسجل الحالي إذا كان موجوداً (لن يكون موجوداً في أول مرة)
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop(); // هذا سيؤدي لحفظ المقطع السابق عبر ondataavailable
-                }
-
-                // إعداد stream جديد (نفس recordCanvas)
-                let stream;
-                try {
-                    stream = recordCanvas.captureStream(30);
-                } catch (err) {
-                    showError('خطأ في بدء مقطع جديد');
-                    return;
-                }
-
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                let chunkChunks = []; // مقاطع صغيرة لهذا الجزء
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) chunkChunks.push(e.data);
-                };
-                mediaRecorder.onstop = () => {
-                    // عند انتهاء هذا المقطع، نحفظه كملف منفصل
-                    if (chunkChunks.length > 0) {
-                        const blob = new Blob(chunkChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `ar-pro-${Date.now()}-part.webm`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    }
-                    // إذا كنا لا نزال في وضع التسجيل، نبدأ مقطعاً جديداً (يتم عن طريق المؤقت)
-                };
-
-                mediaRecorder.start();
-                // نعيد ضبط مؤقت لإنهاء هذا المقطع بعد CHUNK_DURATION
-                if (chunkInterval) clearTimeout(chunkInterval);
-                chunkInterval = setTimeout(() => {
-                    if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
-                        mediaRecorder.stop(); // ينهي المقطع الحالي ويحفظه
-                        // بعد إيقافه، سيتم استدعاء onstop، ثم نبدأ مقطعاً جديداً تلقائياً
-                        startNewChunk(); // نبدأ المقطع التالي فوراً
-                    }
-                }, CHUNK_DURATION);
-            }
-
             recordBtn.addEventListener('click', () => {
                 if (!isRecording) {
-                    // بدء التسجيل العام
                     if (!video.srcObject) { showError('الكاميرا غير متوفرة'); return; }
 
                     recordCanvas.width = canvas.width;
                     recordCanvas.height = canvas.height;
 
-                    // بدأ أول مقطع
-                    isRecording = true;
-                    startNewChunk();
+                    let stream;
+                    try { stream = recordCanvas.captureStream(30); } catch (err) { showError('التسجيل غير مدعوم'); return; }
 
-                    // تحديث واجهة المستخدم
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                    recordedChunks = [];
+                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ar-pro-${Date.now()}.webm`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        recordedChunks = [];
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
                     recordBtn.classList.add('recording-indicator');
                     recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
                     uiPanel.classList.add('hidden');
                     toggleBtn.innerText = '⬆';
                     uiVisible = false;
 
-                    // عداد الوقت
+                    // بدء عداد الوقت
                     recordingStartTime = Date.now();
                     timerDiv.style.display = 'block';
                     timerInterval = setInterval(() => {
                         const sec = Math.floor((Date.now() - recordingStartTime) / 1000);
                         const min = Math.floor(sec / 60);
-                        timerDiv.innerText = `${min.toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
+                        timerDiv.innerText = `${min.toString().padStart(2, '0')}:${(sec % 60).toString().padStart(2, '0')}`;
                     }, 200);
 
-                    // حلقة الرسم للتسجيل
-                    function drawFrame() {
+                    // دالة رسم الإطار على recordCanvas
+                    function captureFrame() {
                         if (!isRecording) return;
                         const vw = video.videoWidth;
                         const vh = video.videoHeight;
@@ -774,22 +812,14 @@
                             recordCtx.drawImage(video, offsetX, offsetY, drawW, drawH);
                         }
                         recordCtx.drawImage(canvas, 0, 0);
-                        recordAnimationId = requestAnimationFrame(drawFrame);
                     }
-                    drawFrame();
+
+                    // نبدأ setInterval بمعدل 30 إطار/ثانية (33.33ms)
+                    recordInterval = setInterval(captureFrame, 33); // أقرب لـ 30fps
 
                 } else {
-                    // إيقاف التسجيل نهائياً
-                    isRecording = false;
-                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                        mediaRecorder.stop();
-                    }
-                    if (chunkInterval) clearTimeout(chunkInterval);
-                    cancelAnimationFrame(recordAnimationId);
-                    recordBtn.classList.remove('recording-indicator');
-                    recordBtn.innerHTML = '<span>⏺️</span><span>تسجيل</span>';
-                    clearInterval(timerInterval);
-                    timerDiv.style.display = 'none';
+                    // إيقاف التسجيل
+                    stopRecording();
                 }
             });
 
