@@ -4,13 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Pro - تسجيل سلس 30fps</title>
+    <title>AR Pro - تسجيل مجزأ 25 ثانية</title>
     <style>
-        /* جميع الأنماط كما هي مع إضافة زر المسح */
+        /* جميع الأنماط كما هي */
         :root {
             --primary: #00e676;
+            --primary-dark: #00c853;
+            --bg-dark: #121212;
+            --bg-glass: rgba(30, 30, 30, 0.75);
+            --border-glass: rgba(255, 255, 255, 0.15);
+            --text-light: #f5f5f5;
             --danger: #ff5252;
-            --bg-glass: rgba(30, 30, 30, 0.8);
+            --shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            --radius: 18px;
         }
         * {
             margin: 0;
@@ -25,12 +31,12 @@
             overflow: hidden;
             width: 100vw;
             height: 100vh;
-            color: #f0f0f0;
+            color: var(--text-light);
         }
         #permission-overlay {
             position: fixed;
             inset: 0;
-            background: #121212;
+            background: var(--bg-dark);
             z-index: 100;
             display: flex;
             flex-direction: column;
@@ -41,13 +47,13 @@
         }
         #permission-overlay h2 {
             color: var(--primary);
-            font-size: 32px;
+            font-size: 28px;
             margin-bottom: 16px;
-            font-weight: 600;
+            font-weight: 500;
         }
         #permission-overlay p {
             color: #aaa;
-            font-size: 17px;
+            font-size: 16px;
             line-height: 1.7;
             max-width: 380px;
             margin-bottom: 32px;
@@ -55,18 +61,18 @@
         #start-camera-btn {
             background: var(--primary);
             color: #000;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             padding: 16px 42px;
             border: none;
             border-radius: 50px;
-            box-shadow: 0 0 25px rgba(0, 230, 118, 0.5);
+            box-shadow: 0 0 25px rgba(0, 230, 118, 0.4);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
         #start-camera-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 0 15px rgba(0, 230, 118, 0.7);
+            transform: scale(0.96);
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.6);
         }
         #camera-feed {
             position: absolute;
@@ -87,9 +93,9 @@
             display: none;
             touch-action: none;
             border: 2px dashed rgba(255,255,255,0.4);
-            border-radius: 16px;
-            padding: 5px;
-            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 4px;
+            background: rgba(0,0,0,0.1);
             backdrop-filter: blur(2px);
             cursor: grab;
         }
@@ -105,7 +111,7 @@
             opacity: 0.5;
             display: block;
             pointer-events: none;
-            border-radius: 12px;
+            border-radius: 8px;
         }
         #drawing-canvas {
             position: absolute;
@@ -122,27 +128,26 @@
             left: 50%;
             transform: translateX(-50%);
             width: calc(100% - 32px);
-            max-width: 700px;
+            max-width: 600px;
             background: var(--bg-glass);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 60px;
-            padding: 10px 16px;
+            border: 1px solid var(--border-glass);
+            border-radius: 50px;
+            padding: 8px 16px;
             z-index: 15;
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             justify-content: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            box-shadow: var(--shadow);
         }
         .chip {
             background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.2);
             color: white;
-            padding: 8px 18px;
+            padding: 6px 16px;
             border-radius: 40px;
             font-size: 14px;
-            font-weight: 500;
             cursor: pointer;
             transition: 0.2s;
         }
@@ -152,7 +157,6 @@
             color: #000;
             font-weight: 600;
         }
-        .chip:active { transform: scale(0.95); }
         #ui-panel {
             position: absolute;
             bottom: 20px;
@@ -161,16 +165,16 @@
             width: calc(100% - 32px);
             max-width: 520px;
             background: var(--bg-glass);
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 28px;
-            padding: 20px 16px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            padding: 18px 16px;
             z-index: 10;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.7);
-            transition: bottom 0.4s, opacity 0.3s;
+            box-shadow: var(--shadow);
+            transition: bottom 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s;
         }
         #ui-panel.hidden {
-            bottom: -350px;
+            bottom: -300px;
             opacity: 0;
             pointer-events: none;
         }
@@ -178,29 +182,35 @@
             position: absolute;
             bottom: 24px;
             right: 20px;
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             background: var(--bg-glass);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-glass);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: 26px;
             cursor: pointer;
             z-index: 11;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            transition: 0.2s;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, background 0.2s;
             color: white;
         }
-        #toggle-ui:active { transform: scale(0.9); background: rgba(60,60,60,0.9); }
+        #toggle-ui:active {
+            transform: scale(0.9);
+            background: rgba(80,80,80,0.8);
+        }
         .row {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             align-items: center;
+        }
+        .row:last-child {
+            margin-bottom: 0;
         }
         .btn {
             flex: 1 1 0;
@@ -209,29 +219,47 @@
             border: 1px solid rgba(255,255,255,0.2);
             color: white;
             padding: 12px 6px;
-            border-radius: 18px;
+            border-radius: 14px;
             font-size: 14px;
             font-weight: 500;
             display: inline-flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             gap: 4px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: background 0.2s, transform 0.1s, border-color 0.2s;
+            line-height: 1.3;
             backdrop-filter: blur(5px);
         }
-        .btn span:first-child { font-size: 20px; }
-        .btn:active { background: rgba(255,255,255,0.25); transform: scale(0.96); }
-        .btn.active-toggle { background: var(--primary); border-color: var(--primary); color: #000; }
-        .btn.danger { color: var(--danger); }
-        .btn.primary-bg { background: var(--primary); color: #000; border-color: var(--primary); }
+        .btn span:first-child {
+            font-size: 18px;
+        }
+        .btn:active {
+            background: rgba(255,255,255,0.25);
+            transform: scale(0.96);
+        }
+        .btn.active-toggle {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+            font-weight: 600;
+        }
+        .btn.danger {
+            color: var(--danger);
+        }
+        .btn.primary-bg {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+        }
         .slider-group {
             display: flex;
             align-items: center;
             gap: 12px;
-            background: rgba(0,0,0,0.4);
-            padding: 8px 16px;
-            border-radius: 50px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 14px;
+            border-radius: 40px;
             border: 1px solid rgba(255,255,255,0.1);
             width: 100%;
         }
@@ -259,44 +287,48 @@
             border: 2px solid white;
         }
         .slider-group input[type=color] {
-            width: 42px;
-            height: 42px;
+            width: 40px;
+            height: 40px;
             border: none;
             background: transparent;
             cursor: pointer;
             border-radius: 50%;
             padding: 0;
         }
-        .slider-group input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
-        .slider-group input[type=color]::-webkit-color-swatch { border: 2px solid white; border-radius: 50%; }
+        .slider-group input[type=color]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .slider-group input[type=color]::-webkit-color-swatch {
+            border: 2px solid white;
+            border-radius: 50%;
+        }
         .slider-group span:last-of-type {
-            min-width: 40px;
+            min-width: 35px;
             text-align: center;
-            font-size: 14px;
-            color: #fff;
+            font-size: 13px;
+            color: #ddd;
         }
         .recording-indicator {
             background: var(--danger) !important;
             color: white !important;
-            animation: pulse 1.2s infinite;
+            border-color: var(--danger) !important;
+            animation: pulse 1.3s infinite;
         }
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(255,82,82,0.7); }
-            70% { box-shadow: 0 0 0 12px rgba(255,82,82,0); }
+            70% { box-shadow: 0 0 0 10px rgba(255,82,82,0); }
             100% { box-shadow: 0 0 0 0 rgba(255,82,82,0); }
         }
         #recording-timer {
             position: absolute;
-            top: 90px;
+            top: 80px;
             left: 16px;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            padding: 8px 18px;
-            border-radius: 40px;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 14px;
+            border-radius: 30px;
             font-size: 16px;
-            font-weight: 600;
-            color: var(--danger);
-            border: 1px solid var(--danger);
+            color: #ff5252;
+            border: 1px solid #ff5252;
             z-index: 20;
             display: none;
         }
@@ -306,11 +338,11 @@
             left: 20px;
             right: 20px;
             background: rgba(230,70,70,0.9);
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(5px);
             color: white;
             text-align: center;
-            padding: 16px;
-            border-radius: 60px;
+            padding: 14px;
+            border-radius: 50px;
             font-weight: 500;
             z-index: 200;
             animation: fadeInOut 3s forwards;
@@ -321,14 +353,16 @@
             85% { opacity: 1; transform: translateY(0); }
             100% { opacity: 0; transform: translateY(20px); }
         }
-        #image-upload { display: none; }
+        #image-upload {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <!-- شاشة الإذن -->
     <div id="permission-overlay">
         <h2>AR الرسم الاحترافي</h2>
-        <p>ابدأ الرسم بالتتبع المباشر بدقة تصل إلى 4K، مع تسجيل سلس 30 إطار/ثانية.</p>
+        <p>ابدأ الرسم بالتتبع المباشر، اختر الدقة المناسبة لجهازك.</p>
         <button id="start-camera-btn">▶ تشغيل الكاميرا</button>
     </div>
 
@@ -336,7 +370,7 @@
     <div id="image-container"><img id="trace-image" alt="مرجع"></div>
     <canvas id="drawing-canvas"></canvas>
 
-    <!-- الشريط العلوي -->
+    <!-- شريط اختيار الدقة والنسبة -->
     <div id="top-bar">
         <span class="chip active" data-res="1080">1080p</span>
         <span class="chip" data-res="720">720p</span>
@@ -347,16 +381,16 @@
 
     <div id="toggle-ui">⚙️</div>
     <div id="ui-panel" class="hidden">
+        <!-- الصف الأول مع زر مسح البيانات الجديد -->
         <div class="row">
             <label for="image-upload" class="btn"><span>📁</span><span>رفع</span></label>
             <input type="file" id="image-upload" accept="image/*">
             <div class="btn" id="lock-btn"><span>🔓</span><span>قفل</span></div>
             <div class="btn" id="undo-btn"><span>↩️</span><span>تراجع</span></div>
-            <!-- زر مسح البيانات الجديد -->
             <div class="btn danger" id="reset-data-btn"><span>🧹</span><span>مسح البيانات</span></div>
         </div>
         <div class="row">
-            <div class="btn danger" id="clear-btn"><span>🗑️</span><span>مسح الرسم</span></div>
+            <div class="btn danger" id="clear-btn"><span>🗑️</span><span>مسح</span></div>
             <div class="btn primary-bg" id="save-btn"><span>🖼️</span><span>صورة</span></div>
             <div class="btn" id="record-btn"><span>⏺️</span><span>تسجيل</span></div>
         </div>
@@ -427,16 +461,18 @@
             let mediaRecorder = null;
             let recordedChunks = [];
             let isRecording = false;
-            let recordInterval = null;       // نستخدم setInterval بدلاً من requestAnimationFrame
-            const recordCanvas = document.createElement('canvas');
-            const recordCtx = recordCanvas.getContext('2d');
+            let recordInterval = null;          // مؤقت الرسم (30fps)
+            let chunkTimeout = null;             // مؤقت تقسيم المقاطع
             let recordingStartTime = 0;
             let timerInterval = null;
+            const recordCanvas = document.createElement('canvas');
+            const recordCtx = recordCanvas.getContext('2d');
+            const CHUNK_DURATION = 25000; // 25 ثانية
 
             // UI
             let uiVisible = false;
 
-            // --- تحديث القيم ---
+            // --- تحديث القيم المعروضة ---
             document.getElementById('opacity-value').innerText = opacitySlider.value;
             document.getElementById('scale-value').innerText = scaleSlider.value;
             document.getElementById('brush-value').innerText = brushSize.value;
@@ -457,7 +493,7 @@
                 document.getElementById('scale-value').innerText = '1.0';
                 updateImageTransform();
 
-                // إعادة تعيين لون الفرشاة والحجم إلى الافتراضي
+                // إعادة تعيين لون الفرشاة وحجمها
                 colorPicker.value = '#00e676';
                 brushSize.value = '3';
                 document.getElementById('brush-value').innerText = '3';
@@ -475,12 +511,12 @@
                     lockBtn.innerHTML = '<span>🔓</span><span>قفل</span>';
                 }
 
-                // إلغاء أي تسجيل قيد التشغيل
+                // إيقاف أي تسجيل قيد التشغيل
                 if (isRecording) {
                     stopRecording();
                 }
 
-                // عرض رسالة تأكيد
+                // رسالة تأكيد
                 showToast('تم مسح جميع البيانات');
             }
 
@@ -494,7 +530,7 @@
                 setTimeout(() => toast.remove(), 2000);
             }
 
-            // --- دالة إيقاف التسجيل (للاستخدام الداخلي) ---
+            // --- دالة إيقاف التسجيل بالكامل ---
             function stopRecording() {
                 if (!isRecording) return;
                 isRecording = false;
@@ -505,10 +541,58 @@
                     clearInterval(recordInterval);
                     recordInterval = null;
                 }
+                if (chunkTimeout) {
+                    clearTimeout(chunkTimeout);
+                    chunkTimeout = null;
+                }
                 clearInterval(timerInterval);
                 timerDiv.style.display = 'none';
                 recordBtn.classList.remove('recording-indicator');
                 recordBtn.innerHTML = '<span>⏺️</span><span>تسجيل</span>';
+            }
+
+            // --- دالة بدء مقطع تسجيل جديد ---
+            function startNewChunk() {
+                if (!isRecording) return; // تم الإيقاف
+
+                // إيقاف المسجل الحالي إذا كان موجوداً (سيحفظ المقطع السابق)
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+
+                // إنشاء مسجل جديد
+                let stream;
+                try {
+                    stream = recordCanvas.captureStream(30);
+                } catch (err) {
+                    showError('خطأ في بدء مقطع جديد');
+                    stopRecording();
+                    return;
+                }
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                let chunkChunks = [];
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunkChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    // حفظ المقطع عند التوقف
+                    if (chunkChunks.length > 0) {
+                        const blob = new Blob(chunkChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ar-pro-${Date.now()}-part.webm`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                    // إذا كنا لا نزال في وضع التسجيل، نبدأ المقطع التالي
+                    if (isRecording) {
+                        chunkTimeout = setTimeout(startNewChunk, CHUNK_DURATION);
+                    }
+                };
+
+                mediaRecorder.start();
             }
 
             function updateDimensions() {
@@ -661,15 +745,9 @@
 
             lockBtn.addEventListener('click', () => {
                 isImageLocked = !isImageLocked;
-                if (isImageLocked) {
-                    imageContainer.classList.add('locked');
-                    lockBtn.classList.add('active-toggle');
-                    lockBtn.innerHTML = '<span>🔒</span><span>مقفول</span>';
-                } else {
-                    imageContainer.classList.remove('locked');
-                    lockBtn.classList.remove('active-toggle');
-                    lockBtn.innerHTML = '<span>🔓</span><span>قفل</span>';
-                }
+                lockBtn.innerHTML = isImageLocked ? '<span>🔒</span><span>مقفول</span>' : '<span>🔓</span><span>قفل</span>';
+                imageContainer.classList.toggle('locked', isImageLocked);
+                lockBtn.classList.toggle('active-toggle', isImageLocked);
             });
 
             opacitySlider.addEventListener('input', (e) => {
@@ -707,12 +785,7 @@
             startBtn.addEventListener('click', async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: 'environment' },
-                            width: { min: 1920, ideal: 3840 },
-                            height: { min: 1080, ideal: 2160 },
-                            frameRate: { ideal: 30 }
-                        }
+                        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
                     });
                     video.srcObject = stream;
                     overlay.style.display = 'none';
@@ -721,27 +794,11 @@
                     uiVisible = true;
                     updateDimensions();
                 } catch (err) {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                facingMode: { ideal: 'environment' },
-                                width: { ideal: 1920 },
-                                height: { ideal: 1080 }
-                            }
-                        });
-                        video.srcObject = stream;
-                        overlay.style.display = 'none';
-                        uiPanel.classList.remove('hidden');
-                        toggleBtn.style.display = 'flex';
-                        uiVisible = true;
-                        updateDimensions();
-                    } catch (err2) {
-                        alert('تعذر الوصول إلى الكاميرا.');
-                    }
+                    alert('تعذر الوصول إلى الكاميرا.');
                 }
             });
 
-            // --- تسجيل الفيديو باستخدام setInterval لتحقيق 30 إطار/ثانية ثابتة ---
+            // --- تسجيل الفيديو مع تقسيم كل 25 ثانية ---
             function showError(msg) {
                 const toast = document.createElement('div');
                 toast.className = 'error-toast';
@@ -757,41 +814,27 @@
                     recordCanvas.width = canvas.width;
                     recordCanvas.height = canvas.height;
 
-                    let stream;
-                    try { stream = recordCanvas.captureStream(30); } catch (err) { showError('التسجيل غير مدعوم'); return; }
-
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                    recordedChunks = [];
-                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `ar-pro-${Date.now()}.webm`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        recordedChunks = [];
-                    };
-
-                    mediaRecorder.start();
+                    // بدأ أول مقطع
                     isRecording = true;
+                    startNewChunk();
+
+                    // تحديث واجهة المستخدم
                     recordBtn.classList.add('recording-indicator');
                     recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
                     uiPanel.classList.add('hidden');
                     toggleBtn.innerText = '⬆';
                     uiVisible = false;
 
-                    // بدء عداد الوقت
+                    // عداد الوقت
                     recordingStartTime = Date.now();
                     timerDiv.style.display = 'block';
                     timerInterval = setInterval(() => {
                         const sec = Math.floor((Date.now() - recordingStartTime) / 1000);
                         const min = Math.floor(sec / 60);
-                        timerDiv.innerText = `${min.toString().padStart(2, '0')}:${(sec % 60).toString().padStart(2, '0')}`;
+                        timerDiv.innerText = `${min.toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
                     }, 200);
 
-                    // دالة رسم الإطار على recordCanvas
+                    // دالة رسم الإطار على recordCanvas (نستخدم setInterval بمعدل 30fps)
                     function captureFrame() {
                         if (!isRecording) return;
                         const vw = video.videoWidth;
@@ -814,8 +857,8 @@
                         recordCtx.drawImage(canvas, 0, 0);
                     }
 
-                    // نبدأ setInterval بمعدل 30 إطار/ثانية (33.33ms)
-                    recordInterval = setInterval(captureFrame, 33); // أقرب لـ 30fps
+                    // بدء الرسم الدوري
+                    recordInterval = setInterval(captureFrame, 33); // 30fps تقريباً
 
                 } else {
                     // إيقاف التسجيل
@@ -826,13 +869,8 @@
             // --- إظهار/إخفاء اللوحة ---
             toggleBtn.addEventListener('click', () => {
                 uiVisible = !uiVisible;
-                if (uiVisible) {
-                    uiPanel.classList.remove('hidden');
-                    toggleBtn.innerText = '⬇';
-                } else {
-                    uiPanel.classList.add('hidden');
-                    toggleBtn.innerText = '⬆';
-                }
+                uiPanel.classList.toggle('hidden', !uiVisible);
+                toggleBtn.innerText = uiVisible ? '⬇' : '⬆';
             });
 
             imageContainer.style.cursor = 'grab';
