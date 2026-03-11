@@ -1,3 +1,7 @@
+لقد قمت بتحديث الكود بناءً على اقتراحك. أضفت زر "تلقائي" جديد بجانب زر التسجيل. عند تفعيل هذا الزر (يكون لونه أخضر)، يعمل التسجيل بنظام التقسيم التلقائي كل 25 ثانية ويحفظ كل مقطع على حدة. عند إلغاء تفعيله، يتم التسجيل بشكل مستمر في ملف واحد حتى تضغط على إيقاف.
+
+كما قمت بتحسين دقة التوقيت وإدارة المقاطع لتجنب الفجوات الزمنية. يمكنك تجربة النسخة المعدلة مباشرة.
+
 ```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -6,7 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Pro - تسجيل مجزأ 25 ثانية</title>
     <style>
-        /* جميع الأنماط كما هي */
+        /* جميع الأنماط كما هي مع بعض الإضافات البسيطة */
         :root {
             --primary: #00e676;
             --primary-dark: #00c853;
@@ -356,6 +360,12 @@
         #image-upload {
             display: none;
         }
+        /* زر تلقائي نشط */
+        .btn.auto-active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -381,7 +391,7 @@
 
     <div id="toggle-ui">⚙️</div>
     <div id="ui-panel" class="hidden">
-        <!-- الصف الأول مع زر مسح البيانات الجديد -->
+        <!-- الصف الأول مع زر مسح البيانات -->
         <div class="row">
             <label for="image-upload" class="btn"><span>📁</span><span>رفع</span></label>
             <input type="file" id="image-upload" accept="image/*">
@@ -392,6 +402,8 @@
         <div class="row">
             <div class="btn danger" id="clear-btn"><span>🗑️</span><span>مسح</span></div>
             <div class="btn primary-bg" id="save-btn"><span>🖼️</span><span>صورة</span></div>
+            <!-- زر تلقائي جديد (Auto split) -->
+            <div class="btn" id="auto-split-btn"><span>🔄</span><span>تلقائي</span></div>
             <div class="btn" id="record-btn"><span>⏺️</span><span>تسجيل</span></div>
         </div>
         <div class="slider-group">
@@ -440,6 +452,8 @@
             const colorPicker = document.getElementById('color-picker');
             const brushSize = document.getElementById('brush-size');
             const timerDiv = document.getElementById('recording-timer');
+            // الزر الجديد
+            const autoSplitBtn = document.getElementById('auto-split-btn');
 
             // --- متغيرات الحالة ---
             let isDrawing = false;
@@ -462,11 +476,13 @@
             let recordedChunks = [];
             let isRecording = false;
             let recordInterval = null;          // مؤقت الرسم (30fps)
-            let chunkTimeout = null;             // مؤقت تقسيم المقاطع
             let recordingStartTime = 0;
             let timerInterval = null;
             const recordCanvas = document.createElement('canvas');
             const recordCtx = recordCanvas.getContext('2d');
+            
+            // خاصية التقسيم التلقائي
+            let autoSplitEnabled = true;  // افتراضي مفعل (زر تلقائي نشط)
             const CHUNK_DURATION = 25000; // 25 ثانية
 
             // UI
@@ -534,6 +550,7 @@
             function stopRecording() {
                 if (!isRecording) return;
                 isRecording = false;
+                
                 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                     mediaRecorder.stop();
                 }
@@ -541,60 +558,177 @@
                     clearInterval(recordInterval);
                     recordInterval = null;
                 }
-                if (chunkTimeout) {
-                    clearTimeout(chunkTimeout);
-                    chunkTimeout = null;
-                }
                 clearInterval(timerInterval);
                 timerDiv.style.display = 'none';
                 recordBtn.classList.remove('recording-indicator');
                 recordBtn.innerHTML = '<span>⏺️</span><span>تسجيل</span>';
+                // لا نغير حالة autoSplitBtn
             }
 
-            // --- دالة بدء مقطع تسجيل جديد ---
+            // --- دالة بدء مقطع تسجيل جديد (تستخدم فقط في وضع autoSplit) ---
             function startNewChunk() {
-                if (!isRecording) return; // تم الإيقاف
+                if (!isRecording) return;
 
-                // إيقاف المسجل الحالي إذا كان موجوداً (سيحفظ المقطع السابق)
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
-
-                // إنشاء مسجل جديد
+                // إنشاء مسجل جديد مع timeslice = 25 ثانية
                 let stream;
                 try {
                     stream = recordCanvas.captureStream(30);
                 } catch (err) {
-                    showError('خطأ في بدء مقطع جديد');
+                    showError('خطأ في بدء المقطع');
                     stopRecording();
                     return;
                 }
 
                 mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
                 let chunkChunks = [];
+                
                 mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) chunkChunks.push(e.data);
+                    if (e.data.size > 0) {
+                        // في وضع autoSplit، كل dataavailable هي مقطع 25 ثانية
+                        if (autoSplitEnabled) {
+                            // حفظ المقطع فوراً
+                            const blob = new Blob([e.data], { type: 'video/webm' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `ar-pro-${Date.now()}-part.webm`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        } else {
+                            // في الوضع العادي، نجمع البيانات لحين الإيقاف
+                            chunkChunks.push(e.data);
+                        }
+                    }
                 };
+
                 mediaRecorder.onstop = () => {
-                    // حفظ المقطع عند التوقف
-                    if (chunkChunks.length > 0) {
+                    if (!autoSplitEnabled && chunkChunks.length > 0) {
+                        // الوضع العادي: عند الإيقاف نحمل المقطع الكامل
                         const blob = new Blob(chunkChunks, { type: 'video/webm' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `ar-pro-${Date.now()}-part.webm`;
+                        a.download = `ar-drawing-${Date.now()}.webm`;
                         a.click();
                         URL.revokeObjectURL(url);
                     }
-                    // إذا كنا لا نزال في وضع التسجيل، نبدأ المقطع التالي
-                    if (isRecording) {
-                        chunkTimeout = setTimeout(startNewChunk, CHUNK_DURATION);
+                    
+                    // إذا كنا في وضع autoSplit وما زلنا نسجل، نبدأ مقطعاً جديداً فوراً (بدون انتظار)
+                    if (isRecording && autoSplitEnabled) {
+                        startNewChunk();
                     }
                 };
 
-                mediaRecorder.start();
+                // بدء التسجيل مع timeslice إذا كان autoSplitEnabled
+                if (autoSplitEnabled) {
+                    mediaRecorder.start(CHUNK_DURATION); // يرسل ondataavailable كل 25 ثانية
+                } else {
+                    mediaRecorder.start(); // بدون تقسيم
+                }
             }
 
+            // --- دالة بدء التسجيل (تستدعى عند الضغط على زر التسجيل) ---
+            function startRecording() {
+                if (!video.srcObject) {
+                    showError('الكاميرا غير متوفرة');
+                    return;
+                }
+
+                recordCanvas.width = canvas.width;
+                recordCanvas.height = canvas.height;
+
+                isRecording = true;
+
+                // بدأ أول مقطع (حسب الوضع)
+                startNewChunk();
+
+                // تحديث واجهة المستخدم
+                recordBtn.classList.add('recording-indicator');
+                recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
+                uiPanel.classList.add('hidden');
+                toggleBtn.innerText = '⬆';
+                uiVisible = false;
+
+                // عداد الوقت
+                recordingStartTime = Date.now();
+                timerDiv.style.display = 'block';
+                timerInterval = setInterval(() => {
+                    const sec = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    const min = Math.floor(sec / 60);
+                    timerDiv.innerText = `${min.toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
+                }, 200);
+
+                // دالة رسم الإطار على recordCanvas (نستخدم setInterval بمعدل 30fps)
+                function captureFrame() {
+                    if (!isRecording) return;
+                    const vw = video.videoWidth;
+                    const vh = video.videoHeight;
+                    if (vw && vh) {
+                        const cw = recordCanvas.width;
+                        const ch = recordCanvas.height;
+                        const vRatio = vw / vh;
+                        const cRatio = cw / ch;
+                        let drawW, drawH, offsetX, offsetY;
+                        if (vRatio > cRatio) {
+                            drawH = ch; drawW = drawH * vRatio;
+                            offsetX = (cw - drawW) / 2; offsetY = 0;
+                        } else {
+                            drawW = cw; drawH = drawW / vRatio;
+                            offsetX = 0; offsetY = (ch - drawH) / 2;
+                        }
+                        recordCtx.drawImage(video, offsetX, offsetY, drawW, drawH);
+                    }
+                    recordCtx.drawImage(canvas, 0, 0);
+                }
+
+                // بدء الرسم الدوري
+                recordInterval = setInterval(captureFrame, 33); // ~30fps
+            }
+
+            function showError(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'error-toast';
+                toast.innerText = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+
+            // --- أحداث الأزرار ---
+            undoBtn.addEventListener('click', () => { paths.pop(); redrawPaths(); });
+            clearBtn.addEventListener('click', () => { paths = []; ctx.clearRect(0,0,canvas.width,canvas.height); });
+            saveBtn.addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = `ar-drawing-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+            resetDataBtn.addEventListener('click', resetAllData);
+
+            // --- زر تلقائي (تبديل الحالة) ---
+            autoSplitBtn.addEventListener('click', () => {
+                autoSplitEnabled = !autoSplitEnabled;
+                if (autoSplitEnabled) {
+                    autoSplitBtn.classList.add('active-toggle');
+                    autoSplitBtn.innerHTML = '<span>🔄</span><span>تلقائي</span>';
+                } else {
+                    autoSplitBtn.classList.remove('active-toggle');
+                    autoSplitBtn.innerHTML = '<span>⏺️</span><span>يدوي</span>'; // تغيير النص للإشارة
+                }
+                showToast(autoSplitEnabled ? 'التقسيم التلقائي مفعل' : 'التسجيل اليدوي (مقطع واحد)');
+            });
+            // تعيين الحالة الابتدائية
+            autoSplitBtn.classList.add('active-toggle'); // مفعل افتراضياً
+
+            // --- زر التسجيل ---
+            recordBtn.addEventListener('click', () => {
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
+            });
+
+            // --- أحداث الرسم ---
             function updateDimensions() {
                 if (currentRes === '1080') {
                     if (currentRatio === '16:9') { canvasWidth = 1920; canvasHeight = 1080; }
@@ -642,7 +776,6 @@
                 });
             }
 
-            // --- أحداث الرسم ---
             function startDrawing(e) {
                 e.preventDefault();
                 isDrawing = true;
@@ -685,20 +818,7 @@
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseleave', stopDrawing);
 
-            // --- أزرار الرسم ---
-            undoBtn.addEventListener('click', () => { paths.pop(); redrawPaths(); });
-            clearBtn.addEventListener('click', () => { paths = []; ctx.clearRect(0,0,canvas.width,canvas.height); });
-            saveBtn.addEventListener('click', () => {
-                const link = document.createElement('a');
-                link.download = `ar-drawing-${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-
-            // --- زر مسح البيانات ---
-            resetDataBtn.addEventListener('click', resetAllData);
-
-            // --- رفع الصورة ---
+            // --- رفع الصورة وتفاعلاتها ---
             imageUpload.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -798,74 +918,6 @@
                 }
             });
 
-            // --- تسجيل الفيديو مع تقسيم كل 25 ثانية ---
-            function showError(msg) {
-                const toast = document.createElement('div');
-                toast.className = 'error-toast';
-                toast.innerText = msg;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
-            }
-
-            recordBtn.addEventListener('click', () => {
-                if (!isRecording) {
-                    if (!video.srcObject) { showError('الكاميرا غير متوفرة'); return; }
-
-                    recordCanvas.width = canvas.width;
-                    recordCanvas.height = canvas.height;
-
-                    // بدأ أول مقطع
-                    isRecording = true;
-                    startNewChunk();
-
-                    // تحديث واجهة المستخدم
-                    recordBtn.classList.add('recording-indicator');
-                    recordBtn.innerHTML = '<span>⏹️</span><span>إيقاف</span>';
-                    uiPanel.classList.add('hidden');
-                    toggleBtn.innerText = '⬆';
-                    uiVisible = false;
-
-                    // عداد الوقت
-                    recordingStartTime = Date.now();
-                    timerDiv.style.display = 'block';
-                    timerInterval = setInterval(() => {
-                        const sec = Math.floor((Date.now() - recordingStartTime) / 1000);
-                        const min = Math.floor(sec / 60);
-                        timerDiv.innerText = `${min.toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
-                    }, 200);
-
-                    // دالة رسم الإطار على recordCanvas (نستخدم setInterval بمعدل 30fps)
-                    function captureFrame() {
-                        if (!isRecording) return;
-                        const vw = video.videoWidth;
-                        const vh = video.videoHeight;
-                        if (vw && vh) {
-                            const cw = recordCanvas.width;
-                            const ch = recordCanvas.height;
-                            const vRatio = vw / vh;
-                            const cRatio = cw / ch;
-                            let drawW, drawH, offsetX, offsetY;
-                            if (vRatio > cRatio) {
-                                drawH = ch; drawW = drawH * vRatio;
-                                offsetX = (cw - drawW) / 2; offsetY = 0;
-                            } else {
-                                drawW = cw; drawH = drawW / vRatio;
-                                offsetX = 0; offsetY = (ch - drawH) / 2;
-                            }
-                            recordCtx.drawImage(video, offsetX, offsetY, drawW, drawH);
-                        }
-                        recordCtx.drawImage(canvas, 0, 0);
-                    }
-
-                    // بدء الرسم الدوري
-                    recordInterval = setInterval(captureFrame, 33); // 30fps تقريباً
-
-                } else {
-                    // إيقاف التسجيل
-                    stopRecording();
-                }
-            });
-
             // --- إظهار/إخفاء اللوحة ---
             toggleBtn.addEventListener('click', () => {
                 uiVisible = !uiVisible;
@@ -874,6 +926,9 @@
             });
 
             imageContainer.style.cursor = 'grab';
+
+            // تحديث الأبعاد الأولية
+            updateDimensions();
         })();
     </script>
 </body>
